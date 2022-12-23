@@ -51,6 +51,7 @@ def fit_cube(max_iter          = 5000,
              mp4save_fn        = None,
              use_opengl        = False):
 
+    breakpoint()
     log_file = None
     writer = None
     if out_dir:
