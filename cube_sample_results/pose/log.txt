@@ -1,0 +1,11 @@
+rep=0,iter=0,err=169.588679,err_best=169.588679,loss=0.155565,loss_best=0.155565,lr=0.010000,nr=1.000000
+rep=0,iter=100,err=37.470565,err_best=37.470565,loss=0.223033,loss_best=0.093104,lr=0.010000,nr=0.398107
+rep=0,iter=200,err=12.223596,err_best=12.223596,loss=0.202213,loss_best=0.049028,lr=0.010000,nr=0.158489
+rep=0,iter=300,err=12.223596,err_best=12.223596,loss=0.210069,loss_best=0.049028,lr=0.010000,nr=0.063096
+rep=0,iter=400,err=11.748460,err_best=11.748460,loss=0.047817,loss_best=0.047817,lr=0.010000,nr=0.025119
+rep=0,iter=500,err=9.112765,err_best=9.112765,loss=0.039494,loss_best=0.039494,lr=0.010000,nr=0.010000
+rep=0,iter=600,err=0.000000,err_best=0.000000,loss=0.000012,loss_best=0.000000,lr=0.010000,nr=0.003981
+rep=0,iter=700,err=0.000000,err_best=0.000000,loss=0.000000,loss_best=0.000000,lr=0.010000,nr=0.001585
+rep=0,iter=800,err=0.000000,err_best=0.000000,loss=0.000012,loss_best=0.000000,lr=0.010000,nr=0.000631
+rep=0,iter=900,err=0.000000,err_best=0.000000,loss=0.000075,loss_best=0.000000,lr=0.010000,nr=0.000251
+rep=0,iter=1000,err=0.079129,err_best=0.000000,loss=0.000092,loss_best=0.000000,lr=0.010000,nr=0.000100
