@@ -30,7 +30,7 @@ def make_grid(arr, ncols=2):
     assert n == nrows*ncols
     return arr.reshape(nrows, ncols, height, width, nc).swapaxes(1,2).reshape(height*nrows, width*ncols, nc)
 
-def gen_smpl_vertices(model_path='texture_tool/smpl/models/basicmodel_m_lbs_10_207_0_v1.0.0.pkl', gpu_id=[0]):
+def gen_smpl_vertices(model_path='texture_tool/smpl/models/basicModel_f_lbs_10_207_0_v1.0.0.pkl', gpu_id=[0]):
     if len(gpu_id) > 0 and torch.cuda.is_available():
         os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id[0])
         device = torch.device('cuda')
