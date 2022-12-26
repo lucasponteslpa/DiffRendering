@@ -5,6 +5,7 @@ import sys
 import numpy as np
 import torch
 import imageio
+import numpy as np
 
 from samples.torch import util
 
@@ -51,7 +52,7 @@ def gen_smpl_vertices(model_path='texture_tool/smpl/models/basicModel_f_lbs_10_2
 
     model = SMPLModel(device=device, model_path=model_path)
     result = model(betas, pose, trans)
-    return result, model, device
+    return result.float(), model, device
 
 def main():
     parser = argparse.ArgumentParser(description='Cube fit example')
