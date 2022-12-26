@@ -45,7 +45,7 @@ def gen_smpl_vertices(model_path='texture_tool/smpl/models/basicModel_f_lbs_10_2
 
     np.random.seed(9608)
     breakpoint()
-    pose = torch.from_numpy((np.random.rand(pose_size) - 0.5) * 0.4)\
+    pose = torch.from_numpy((np.random.rand(pose_size) - 0.5))\
             .type(torch.float64).to(device)
     betas = torch.from_numpy((np.random.rand(beta_size) - 0.5) * 0.06) \
             .type(torch.float64).to(device)
