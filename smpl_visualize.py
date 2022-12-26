@@ -81,8 +81,8 @@ def main():
     a_mv  = np.matmul(util.translate(0, 0, -3.5), a_rot)
     a_mvp = np.matmul(proj, a_mv).astype(np.float32)
 
-    color     = render(glctx, r_mvp, smpl_vert, smpl_model.faces, vtx_col_opt, smpl_model.faces, args.resolution)
     breakpoint()
+    color     = render(glctx, r_mvp, smpl_vert, smpl_model.faces, vtx_col_opt, smpl_model.faces, args.resolution)
     # Set up logging.
     if args.outdir:
         ds = 'd' if args.discontinuous else 'c'
