@@ -44,6 +44,7 @@ def gen_smpl_vertices(model_path='texture_tool/smpl/models/basicModel_f_lbs_10_2
     beta_size = 10
 
     np.random.seed(9608)
+    breakpoint()
     pose = torch.from_numpy((np.random.rand(pose_size) - 0.5) * 0.4)\
             .type(torch.float64).to(device)
     betas = torch.from_numpy((np.random.rand(beta_size) - 0.5) * 0.06) \
@@ -60,6 +61,7 @@ def main():
     parser.add_argument('--outdir', help='specify output directory', default='')
     parser.add_argument('--discontinuous', action='store_true', default=False)
     parser.add_argument('--resolution', type=int, default=32, required=False)
+    parser.add_argument('--mp4save', action='store_true', default=False)
     args = parser.parse_args()
 
     glctx = dr.RasterizeCudaContext()
