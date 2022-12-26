@@ -82,7 +82,7 @@ def main():
     a_mvp = np.matmul(proj, a_mv).astype(np.float32)
 
     breakpoint()
-    faces = torch.from_numpy(smpl_model.faces).cuda()
+    faces = torch.from_numpy(smpl_model.faces.astype(int)).cuda()
     color     = render(glctx, r_mvp, smpl_vert, faces, vtx_col_opt, faces, args.resolution)
     # Set up logging.
     if args.outdir:
