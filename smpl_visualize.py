@@ -86,7 +86,7 @@ def main():
     faces = torch.from_numpy(smpl_model.faces.astype(np.int32)).cuda()
     color     = render(glctx, r_mvp, smpl_vert, faces, vtx_col_opt, faces, args.resolution)
     img = color.cpu().detach().numpy()
-    cv2.imwrite('smpl_out/out_smpl.png',img)
+    cv2.imwrite('smpl_out/out_smpl.png',255*img[0])
     # Set up logging.
     if args.outdir:
         ds = 'd' if args.discontinuous else 'c'
