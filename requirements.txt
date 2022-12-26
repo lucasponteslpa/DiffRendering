@@ -1,0 +1,2 @@
+pip install PyWavefront
+pip install pyglet
