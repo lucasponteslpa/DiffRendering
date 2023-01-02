@@ -17,6 +17,12 @@ from texture_tool.models.smpl_torch import SMPLModel
 from render.obj import load_obj
 from render.render import interpolate
 
+def make_grid(arr, ncols=2):
+    n, height, width, nc = arr.shape
+    nrows = n//ncols
+    assert n == nrows*ncols
+    return arr.reshape(nrows, ncols, height, width, nc).swapaxes(1,2).reshape(height*nrows, width*ncols, nc)
+
 def transform_pos(mtx, pos):
     t_mtx = torch.from_numpy(mtx).cuda() if isinstance(mtx, np.ndarray) else mtx
     # (x,y,z) -> (x,y,z,1)
@@ -60,15 +66,15 @@ def gen_smpl_torch_model(model_path='texture_tool/smpl/models/basicModel_f_lbs_1
     model = SMPLModel(device=device, model_path=model_path)
     return model, device
 
-def gen_rand_smpl_param(device,pose_size=72, beta_size=10, n_base_points=5):
+def gen_rand_smpl_param(device,pose_size=72, beta_size=10, n_base_points=5, interp_size=100):
     base_idx = np.array(list(range(n_base_points)))
-    interp_array = np.array([(i)/100 for i in range(100*(n_base_points-1))])
+    interp_array = np.array([(i)/interp_size for i in range(interp_size*(n_base_points-1))])
 
     pose = np.array([(np.interp(interp_array, base_idx,np.random.rand( n_base_points)) - 0.5) for _ in range(pose_size)])
     pose = torch.from_numpy(pose).type(torch.float64).to(device)
     betas = np.array([(np.interp(interp_array, base_idx,np.random.rand( n_base_points)) - 0.5)*0.06 for _ in range(beta_size)])
     betas = torch.from_numpy(betas).type(torch.float64).to(device)
-    trans = torch.from_numpy(np.zeros((3,100*n_base_points))).type(torch.float64).to(device)
+    trans = torch.from_numpy(np.zeros((3,interp_size*n_base_points))).type(torch.float64).to(device)
 
     return pose.transpose(1,0), betas.transpose(1,0), trans.transpose(1,0)
 
@@ -98,18 +104,30 @@ def gen_smpl_vertices(model_path='texture_tool/smpl/models/basicModel_f_lbs_10_2
 
 def gen_smpl_rand_1_cam_mp4(ctx, writer, mesh, smpl_model, poses, betas, trans, mtx, resolution):
     for p, b, t in zip(poses,betas, trans):
-        img_frame = gen_img_frame(ctx,mesh, smpl_model, p,b,t,mtx,resolution)
-        writer.append_data(np.clip(np.rint(img_frame[0].cpu().detach().numpy()*255),0,255).astype(np.uint8))
+        img_frames = []
+        for m in mtx:
+            f = gen_img_frame(ctx,mesh, smpl_model, p, b, t, m,resolution)
+            f = np.clip(np.rint(f[0].cpu().detach().numpy()*255),0,255).astype(np.uint8)
+            img_frames.append(f)
+        img_grid = make_grid(np.stack(img_frames))
+        writer.append_data(img_grid)
     writer.close()
 
 def simple_smpl_render(ctx, mesh, mtx_in, resolution, enable_mip=True):
-    color = texture_render(ctx, mtx_in, mesh.v_pos, mesh.t_pos_idx.to(torch.int32), mesh.v_tex, mesh.t_tex_idx.to(torch.int32), mesh.material['kd'].data, resolution, enable_mip=enable_mip)
+    color = texture_render(ctx,
+                           mtx_in,
+                           mesh.v_pos,
+                           mesh.t_pos_idx.to(torch.int32),
+                           mesh.v_tex,
+                           mesh.t_tex_idx.to(torch.int32),
+                           mesh.material['kd'].data,
+                           resolution,
+                           enable_mip=enable_mip)
     return color
 
 def gen_img_frame(ctx, mesh, smpl_model, pose, betas, trans, mtx, resolution):
     result_vert = smpl_model(betas, pose, trans)
     mesh.v_pos = result_vert.type(torch.float32)
-    # breakpoint()
     color = simple_smpl_render(ctx, mesh, mtx, resolution)
     return color
 
@@ -123,26 +141,31 @@ def main():
 
     writer = imageio.get_writer(f'{args.outdir}/smpl_rand_pose_1_cam.mp4', mode='I', fps=20, codec='libx264', bitrate='16M')
 
-    smpl_f_mesh = load_obj('texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.obj',mtl_override='texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.mtl')
+    smpl_f_mesh = load_obj('texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.obj',
+                            mtl_override='texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.mtl')
     glctx = dr.RasterizeCudaContext()
 
     smpl_vert, smpl_model, device = gen_smpl_vertices(gpu_id=[1])
     poses, betas, trans = gen_rand_smpl_param(device)
     # Random rotation/translation matrix for optimization.
-    r_rot = util.random_rotation_translation(0.25)
+    mtx_list = []
+    for i in range(4):
+
+        r_rot = util.random_rotation_translation(0.25 + i*0.05)
+
+        # Modelview and modelview + projection matrices.
+        proj  = util.projection(x=0.4)
+        r_mv  = np.matmul(util.translate(0, 0, -3.5), r_rot)
+        r_mvp = np.matmul(proj, r_mv).astype(np.float32)
+        mtx_list.append(r_mvp)
 
     # Smooth rotation for display.
     ang=0
     a_rot = np.matmul(util.rotate_x(-0.4), util.rotate_y(ang))
-
-    # Modelview and modelview + projection matrices.
-    proj  = util.projection(x=0.4)
-    r_mv  = np.matmul(util.translate(0, 0, -3.5), r_rot)
-    r_mvp = np.matmul(proj, r_mv).astype(np.float32)
     a_mv  = np.matmul(util.translate(0, 0, -3.5), a_rot)
     a_mvp = np.matmul(proj, a_mv).astype(np.float32)
 
-    gen_smpl_rand_1_cam_mp4(glctx,writer,smpl_f_mesh, smpl_model, poses, betas, trans, r_mvp,args.resolution)
+    gen_smpl_rand_1_cam_mp4(glctx,writer,smpl_f_mesh, smpl_model, poses, betas, trans, mtx_list, args.resolution)
     print("Done.")
 
 #----------------------------------------------------------------------------
