@@ -98,7 +98,7 @@ def fit_smpl(gctx,
                     optimizer.step()
                     scheduler.step()
 
-                    tq.set_postfix({'mse',loss.item()})
+                    tq.set_postfix({'mse',loss})
                     tq.update()
 
                     if save_mp4 and n < 2:
