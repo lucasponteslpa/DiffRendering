@@ -64,8 +64,9 @@ def fit_smpl(gctx,
     # Adam optimizer for vertex position and color with a learning rate ramp.
     optimizer    = torch.optim.Adam([vtx_col_opt], lr=1e-2)
     scheduler    = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: max(0.01, 10**(-x*0.0005)))
-    with tqdm(total=(max_iter)) as tq:
+    with tqdm(total=poses.shape[0]*len(mvp_list)) as tq:
         for it in range(max_iter + 1):
+            print("Epoch {}/{}".format(it+1, max_iter))
             save_mp4 = mp4save_interval and (it % mp4save_interval == 0)
             for p, b, t in zip(poses,betas, trans):
                 img_frames = []
@@ -97,6 +98,9 @@ def fit_smpl(gctx,
                     optimizer.step()
                     scheduler.step()
 
+                    tq.set_postfix({'mse',loss.item()})
+                    tq.update()
+
                     if save_mp4 and n < 2:
                         f = np.clip(np.rint(color_target[0].cpu().detach().numpy()*255),0,255).astype(np.uint8)
                         img_frames.append(f)
@@ -106,9 +110,11 @@ def fit_smpl(gctx,
                 if save_mp4:
                     img_grid = make_grid(np.stack(img_frames))
                     writer.append_data(img_grid)
-
-            tq.update()
+            tq.refresh()
+            tq.reset()
     # Done.
+    if fit_tex:
+        cv2.imwrite(f'{out_dir}/final_tex.png',vtx_col_opt.cpu().detach().numpy()*255)
     if writer is not None:
         writer.close()
 
