@@ -1,2 +1,1 @@
-pip install PyWavefront
-pip install pyglet
+install opencv

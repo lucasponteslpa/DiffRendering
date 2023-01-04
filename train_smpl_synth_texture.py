@@ -32,6 +32,7 @@ def fit_smpl(gctx,
              display_interval  = None,
              display_res       = 512,
              out_dir           = None,
+             fit_tex           = False,
              log_fn            = None,
              mp4save_interval  = None,
              mp4save_fn        = None):
@@ -48,9 +49,14 @@ def fit_smpl(gctx,
         mp4save_interval = None
 
     # vtx_pos_rand = np.random.uniform(-0.5, 0.5, size=vtxp.shape) + vtxp
-    vtx_col_rand = np.random.uniform(0.0, 1.0, size=smpl_mesh_target.v_pos.shape)
-    # vtx_pos_opt  = torch.tensor(vtx_pos_rand, dtype=torch.float32, device='cuda', requires_grad=True)
-    vtx_col_opt  = torch.tensor(vtx_col_rand, dtype=torch.float32, device='cuda', requires_grad=True)
+    if fit_tex:
+        vtx_col_rand = np.random.uniform(0.0, 1.0, size=smpl_mesh_target.material['kd'].data.shape)
+        # vtx_pos_opt  = torch.tensor(vtx_pos_rand, dtype=torch.float32, device='cuda', requires_grad=True)
+        vtx_col_opt  = torch.tensor(vtx_col_rand, dtype=torch.float32, device='cuda', requires_grad=True)
+    else:
+        vtx_col_rand = np.random.uniform(0.0, 1.0, size=smpl_mesh_target.v_pos.shape)
+        # vtx_pos_opt  = torch.tensor(vtx_pos_rand, dtype=torch.float32, device='cuda', requires_grad=True)
+        vtx_col_opt  = torch.tensor(vtx_col_rand, dtype=torch.float32, device='cuda', requires_grad=True)
 
     # Adam optimizer for vertex position and color with a learning rate ramp.
     optimizer    = torch.optim.Adam([vtx_col_opt], lr=1e-2)
@@ -63,13 +69,23 @@ def fit_smpl(gctx,
                 for n, m in enumerate(mvp_list):
 
                     color_target = gen_img_frame(gctx,smpl_mesh_target, smpl_ref, p, b, t, m, resolution)
-                    color_opt = simple_render(gctx,
-                                    m,
-                                    smpl_mesh_target.v_pos,
-                                    smpl_mesh_target.t_pos_idx.to(torch.int32),
-                                    vtx_col_opt,
-                                    torch.from_numpy(smpl_ref.faces.astype(np.int32)).cuda(),
-                                    resolution)
+                    if fit_tex:
+                        color_opt = texture_render(gctx,
+                                        m,
+                                        smpl_mesh_target.v_pos,
+                                        smpl_mesh_target.t_pos_idx.to(torch.int32),
+                                        smpl_mesh_target.v_tex,
+                                        smpl_mesh_target.t_tex_idx.to(torch.int32),
+                                        vtx_col_opt,
+                                        resolution)
+                    else:
+                        color_opt = simple_render(gctx,
+                                        m,
+                                        smpl_mesh_target.v_pos,
+                                        smpl_mesh_target.t_pos_idx.to(torch.int32),
+                                        vtx_col_opt,
+                                        torch.from_numpy(smpl_ref.faces.astype(np.int32)).cuda(),
+                                        resolution)
 
                     # Compute loss and train.
                     loss = torch.mean((color_target - color_opt)**2) # L2 pixel loss.
@@ -145,7 +161,8 @@ def main():
         out_dir=args.outdir,
         log_fn='log.txt',
         mp4save_interval=args.mp4save_interval,
-        mp4save_fn='progress.mp4'
+        mp4save_fn='progress.mp4',
+        fit_tex=True
     )
     print("Done.")
 
