@@ -65,7 +65,7 @@ def fit_smpl(gctx,
     optimizer    = torch.optim.Adam([vtx_col_opt], lr=1e-2)
     scheduler    = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: max(0.01, 10**(-x*0.0005)))
     with tqdm(total=poses.shape[0]*len(mvp_list)) as tq:
-        for it in range(max_iter + 1):
+        for it in range(max_iter):
             print("Epoch {}/{}".format(it+1, max_iter))
             save_mp4 = mp4save_interval and (it % mp4save_interval == 0)
             for p, b, t in zip(poses,betas, trans):
@@ -114,7 +114,7 @@ def fit_smpl(gctx,
             tq.reset()
     # Done.
     if fit_tex:
-        cv2.imwrite(f'{out_dir}/final_tex.png',vtx_col_opt.cpu().detach().numpy()*255)
+        cv2.imwrite(f'{out_dir}/final_tex.png',vtx_col_opt.cpu().detach().numpy()[0]*255)
     if writer is not None:
         writer.close()
 
