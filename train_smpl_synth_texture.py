@@ -50,7 +50,10 @@ def fit_smpl(gctx,
 
     # vtx_pos_rand = np.random.uniform(-0.5, 0.5, size=vtxp.shape) + vtxp
     if fit_tex:
-        vtx_col_rand = np.random.uniform(0.0, 1.0, size=smpl_mesh_target.material['kd'].data.shape)
+        mat_shape = smpl_mesh_target.material['kd'].data.shape
+        mat_shape[1] = mat_shape[1]//2
+        mat_shape[2] = mat_shape[2]//2
+        vtx_col_rand = np.random.uniform(0.0, 1.0, size=mat_shape)
         # vtx_pos_opt  = torch.tensor(vtx_pos_rand, dtype=torch.float32, device='cuda', requires_grad=True)
         vtx_col_opt  = torch.tensor(vtx_col_rand, dtype=torch.float32, device='cuda', requires_grad=True)
     else:
