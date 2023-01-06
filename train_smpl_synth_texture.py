@@ -17,6 +17,10 @@ from texture_tool.models.smpl_torch import SMPLModel
 from render.obj import load_obj
 from render.render import interpolate
 
+from mlp_models.mlp_models import SimpleColorMLP
+
+from render.texture import texture2d_mip
+
 from smpl_visualize import *
 
 def fit_smpl(gctx,
@@ -32,7 +36,7 @@ def fit_smpl(gctx,
              display_interval  = None,
              display_res       = 512,
              out_dir           = None,
-             fit_tex           = False,
+             fit_mode          = None,
              log_fn            = None,
              mp4save_interval  = None,
              mp4save_fn        = None):
@@ -49,20 +53,40 @@ def fit_smpl(gctx,
         mp4save_interval = None
 
     # vtx_pos_rand = np.random.uniform(-0.5, 0.5, size=vtxp.shape) + vtxp
-    if fit_tex:
+    if fit_mode == 'tex':
         mat_shape = smpl_mesh_target.material['kd'].data.shape
-        mat_shape_1 = mat_shape[1]//2
-        mat_shape_2 = mat_shape[2]//2
-        vtx_col_rand = np.random.uniform(0.0, 1.0, size=(mat_shape[0], mat_shape_1, mat_shape_2, mat_shape[3]))
+        mat_shape_1 = mat_shape[1]//4
+        mat_shape_2 = mat_shape[2]//4
+        opt_shape = (mat_shape[0], mat_shape_1, mat_shape_2, mat_shape[3])
+        # vtx_col_rand = np.random.uniform(0.0, 1.0, size=(mat_shape[0], mat_shape_1, mat_shape_2, mat_shape[3]))
         # vtx_pos_opt  = torch.tensor(vtx_pos_rand, dtype=torch.float32, device='cuda', requires_grad=True)
-        vtx_col_opt  = torch.tensor(vtx_col_rand, dtype=torch.float32, device='cuda', requires_grad=True)
+        # vtx_col_opt  = torch.tensor(vtx_col_rand, dtype=torch.float32, device='cuda', requires_grad=True)
+        vtx_col_opt=torch.full(opt_shape, 0.2, device='cuda', requires_grad=True)
+    elif fit_mode == 'mlp':
+        model = SimpleColorMLP().to('cuda')
+        model.train()
+        canonical_v_pos = torch.clone(smpl_mesh_target.v_pos).to('cuda')
+    elif fit_mode == 'tex_mlp' or fit_mode == 'tex_mlp2':
+        mat_shape = smpl_mesh_target.material['kd'].data.shape
+        mat_shape_1 = mat_shape[1]//4
+        mat_shape_2 = mat_shape[2]//4
+        coords = torch.linspace(-1.0,1.0,mat_shape_1,dtype=torch.float32, device='cuda')
+        x_grid, y_grid = torch.meshgrid(coords, coords, indexing='ij')
+        x_coords = x_grid.reshape(-1).unsqueeze(-1)
+        y_coords = y_grid.reshape(-1).unsqueeze(-1)
+        xy_coords = torch.cat((x_coords,y_coords), -1)
+        model = SimpleColorMLP(pos_enc_len=6, in_channels=2, n_mlp_layers=3).to('cuda')
+
     else:
         vtx_col_rand = np.random.uniform(0.0, 1.0, size=smpl_mesh_target.v_pos.shape)
         # vtx_pos_opt  = torch.tensor(vtx_pos_rand, dtype=torch.float32, device='cuda', requires_grad=True)
         vtx_col_opt  = torch.tensor(vtx_col_rand, dtype=torch.float32, device='cuda', requires_grad=True)
 
     # Adam optimizer for vertex position and color with a learning rate ramp.
-    optimizer    = torch.optim.Adam([vtx_col_opt], lr=1e-2)
+    if not fit_mode=='mlp' and not fit_mode=='tex_mlp':
+        optimizer    = torch.optim.Adam([vtx_col_opt], lr=1e-2)
+    else:
+        optimizer    = torch.optim.Adam(model.parameters(), lr=1e-2)
     scheduler    = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: max(0.01, 10**(-x*0.0005)))
     with tqdm(total=poses.shape[0]*len(mvp_list)) as tq:
         for it in range(max_iter):
@@ -71,9 +95,15 @@ def fit_smpl(gctx,
             for p, b, t in zip(poses,betas, trans):
                 img_frames = []
                 for n, m in enumerate(mvp_list):
-
-                    color_target = gen_img_frame(gctx,smpl_mesh_target, smpl_ref, p, b, t, m, resolution)
-                    if fit_tex:
+                    if fit_mode =='tex_mlp2':
+                        color_target = torch.nn.functional.interpolate(smpl_mesh_target.material['kd'].data.permute(0,3,1,2), scale_factor=0.25,mode='bicubic')
+                        color_target = color_target.permute(0,2,3,1)
+                    else:
+                        color_target = gen_img_frame(gctx,smpl_mesh_target, smpl_ref, p, b, t, m, resolution)
+                    if fit_mode=='tex':
+                        mips = [vtx_col_opt]
+                        while mips[-1].shape[1] > 1 and mips[-1].shape[2] > 1:
+                            mips += [texture2d_mip.apply(mips[-1])]
                         color_opt = texture_render(gctx,
                                         m,
                                         smpl_mesh_target.v_pos,
@@ -81,7 +111,36 @@ def fit_smpl(gctx,
                                         smpl_mesh_target.v_tex,
                                         smpl_mesh_target.t_tex_idx.to(torch.int32),
                                         vtx_col_opt,
+                                        resolution,
+                                        mip=mips[1:])
+                    elif fit_mode=='mlp':
+                        vtx_col_opt = model(canonical_v_pos)
+                        color_opt = simple_render(gctx,
+                                        m,
+                                        smpl_mesh_target.v_pos,
+                                        smpl_mesh_target.t_pos_idx.to(torch.int32),
+                                        vtx_col_opt,
+                                        torch.from_numpy(smpl_ref.faces.astype(np.int32)).cuda(),
                                         resolution)
+                    elif fit_mode=='tex_mlp':
+                        vtx_col_opt = model(xy_coords)
+                        vtx_col_opt = vtx_col_opt.reshape(1,mat_shape_1, mat_shape_2, 3)
+                        mips = [vtx_col_opt]
+                        while mips[-1].shape[1] > 1 and mips[-1].shape[2] > 1:
+                            mips += [texture2d_mip.apply(mips[-1])]
+                        color_opt = texture_render(gctx,
+                                        m,
+                                        smpl_mesh_target.v_pos,
+                                        smpl_mesh_target.t_pos_idx.to(torch.int32),
+                                        smpl_mesh_target.v_tex,
+                                        smpl_mesh_target.t_tex_idx.to(torch.int32),
+                                        vtx_col_opt,
+                                        resolution,
+                                        mip=mips[1:])
+                    elif fit_mode=='tex_mlp2':
+                        vtx_col_opt = model(xy_coords)
+                        color_opt = vtx_col_opt.reshape(1,mat_shape_1, mat_shape_2, 3)
+
                     else:
                         color_opt = simple_render(gctx,
                                         m,
@@ -113,8 +172,31 @@ def fit_smpl(gctx,
             tq.refresh()
             tq.reset()
     # Done.
-    if fit_tex:
+    if fit_mode=='tex' or fit_mode=='tex_mlp':
+        if fit_mode=='tex_mlp':
+            vtx_col_opt = model(xy_coords)
+            vtx_col_opt = vtx_col_opt.reshape(1,mat_shape_1, mat_shape_2,3)
         cv2.imwrite(f'{out_dir}/final_tex.png',vtx_col_opt.cpu().detach().numpy()[0]*255)
+        color_opt = texture_render(gctx,
+                                        mvp_list[0],
+                                        smpl_mesh_target.v_pos,
+                                        smpl_mesh_target.t_pos_idx.to(torch.int32),
+                                        smpl_mesh_target.v_tex,
+                                        smpl_mesh_target.t_tex_idx.to(torch.int32),
+                                        vtx_col_opt,
+                                        resolution)
+        cv2.imwrite(f'{out_dir}/final_col_cam0.png',color_opt.cpu().detach().numpy()[0,:,:,::-1]*255)
+    else:
+        if fit_mode=='mlp':
+            vtx_col_opt = model(canonical_v_pos)
+        color_opt = simple_render(gctx,
+                                  mvp_list[0],
+                                  smpl_mesh_target.v_pos,
+                                  smpl_mesh_target.t_pos_idx.to(torch.int32),
+                                  vtx_col_opt,
+                                  torch.from_numpy(smpl_ref.faces.astype(np.int32)).cuda(),
+                                  resolution*2)
+        cv2.imwrite(f'{out_dir}/final_col_cam0.png',color_opt.cpu().detach().numpy()[0,:,:,::-1]*255)
     if writer is not None:
         writer.close()
 
@@ -171,7 +253,7 @@ def main():
         log_fn='log.txt',
         mp4save_interval=args.mp4save_interval,
         mp4save_fn='progress.mp4',
-        fit_tex=True
+        fit_mode='tex'
     )
     print("Done.")
 

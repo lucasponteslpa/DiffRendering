@@ -36,13 +36,13 @@ def simple_render(glctx, mtx, pos, pos_idx, vtx_col, col_idx, resolution: int):
     color       = dr.antialias(color, rast_out, pos_clip, pos_idx)
     return color
 
-def texture_render(glctx, mtx, pos, pos_idx, uv, uv_idx, tex, resolution, enable_mip=True, max_mip_level=9):
+def texture_render(glctx, mtx, pos, pos_idx, uv, uv_idx, tex, resolution, enable_mip=True, max_mip_level=9, mip=None):
     # breakpoint()
     pos_clip = transform_pos(mtx, pos)
     rast_out, rast_out_db = dr.rasterize(glctx, pos_clip, pos_idx, resolution=[resolution, resolution])
     if enable_mip:
         texc, texd = dr.interpolate(uv, rast_out, uv_idx, rast_db=rast_out_db, diff_attrs='all')
-        color = dr.texture(tex, texc, texd, filter_mode='linear-mipmap-linear', max_mip_level=max_mip_level)
+        color = dr.texture(tex, texc, texd, mip=mip ,filter_mode='linear-mipmap-linear', max_mip_level=max_mip_level)
     else:
         texc, _ = dr.interpolate(uv, rast_out, uv_idx)
         color = dr.texture(tex, texc, filter_mode='linear')

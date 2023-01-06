@@ -150,7 +150,7 @@ def fit_earth(max_iter          = 20000,
                 log_file.write(s + '\n')
 
         # Show/save image.
-        display_image = display_interval and (it % display_interval == 0)
+        display_image = False
         save_image = imgsave_interval and (it % imgsave_interval == 0)
         save_texture = texsave_interval and (it % texsave_interval) == 0
 

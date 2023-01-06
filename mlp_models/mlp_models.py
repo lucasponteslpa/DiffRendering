@@ -1,11 +1,12 @@
 import torch
+import torch.nn as nn
 
 class PositionalEncoding(torch.nn.Module):
-    def __init__(self, n_freqs=7):
+    def __init__(self, n_freqs=7,device='cuda'):
         super(PositionalEncoding,self).__init__()
 
         self.n_freqs = n_freqs
-        self.freq_bands = 2.**torch.linspace(0, n_freqs-1, n_freqs, dtype=torch.float64).unsqueeze(0)
+        self.freq_bands = 2.**torch.linspace(0, n_freqs-1, n_freqs, dtype=torch.float32, device=device).unsqueeze(0)
 
     def forward(self, x):
         x_in = x.unsqueeze(-1)
@@ -22,8 +23,26 @@ class PositionalEncoding(torch.nn.Module):
 
 
 class SimpleColorMLP(torch.nn.Module):
-    def __init__(self, device, pos_enc_len = 7, in_channels=3):
+    def __init__(self, pos_enc_len = 7, in_channels=3, n_mlp_layers=3, out_channels=3):
         super(SimpleColorMLP,self).__init__()
 
         self.pos_enc = PositionalEncoding(pos_enc_len)
-        self.layer1 = torch.Linear(in_channels*2*pos_enc_len, 280)
+
+        in_feats = in_channels*2*pos_enc_len
+        net_width = 256
+        early_mlp = []
+        for layer_idx in range(n_mlp_layers-1):
+            early_mlp.append(nn.Linear(in_feats, net_width))
+            early_mlp.append(nn.ReLU())
+            in_feats = net_width
+        early_mlp.append(nn.Linear(in_feats, out_channels))
+        early_mlp.append(nn.Sigmoid())
+
+        self.mlp = nn.Sequential(*early_mlp)
+
+    def forward(self, x):
+        x_enc = self.pos_enc(x)
+        out_color = self.mlp(x_enc.to(torch.float32))
+
+        return out_color
+
