@@ -9,6 +9,7 @@ import imageio
 import numpy as np
 import cv2
 
+from mssim import SSIM
 from samples.torch import util
 
 import nvdiffrast.torch as dr
@@ -55,8 +56,8 @@ def fit_smpl(gctx,
     # vtx_pos_rand = np.random.uniform(-0.5, 0.5, size=vtxp.shape) + vtxp
     if fit_mode == 'tex':
         mat_shape = smpl_mesh_target.material['kd'].data.shape
-        mat_shape_1 = mat_shape[1]//4
-        mat_shape_2 = mat_shape[2]//4
+        mat_shape_1 = (mat_shape[1]//4)//2
+        mat_shape_2 = (mat_shape[2]//4)//2
         opt_shape = (mat_shape[0], mat_shape_1, mat_shape_2, mat_shape[3])
         # vtx_col_rand = np.random.uniform(0.0, 1.0, size=(mat_shape[0], mat_shape_1, mat_shape_2, mat_shape[3]))
         # vtx_pos_opt  = torch.tensor(vtx_pos_rand, dtype=torch.float32, device='cuda', requires_grad=True)
@@ -88,6 +89,7 @@ def fit_smpl(gctx,
     else:
         optimizer    = torch.optim.Adam(model.parameters(), lr=1e-2)
     scheduler    = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: max(0.01, 10**(-x*0.0005)))
+    ssim = SSIM(data_range=1.0)
     with tqdm(total=poses.shape[0]*len(mvp_list)) as tq:
         for it in range(max_iter):
             print("Epoch {}/{}".format(it+1, max_iter))
@@ -151,7 +153,7 @@ def fit_smpl(gctx,
                                         resolution)
 
                     # Compute loss and train.
-                    loss = torch.mean((color_target - color_opt)**2) # L2 pixel loss.
+                    loss = torch.mean((color_target - color_opt)**2) + (1.0 - ssim(color_target.permute(0,3,1,2),color_opt.permute(0,3,1,2)))/2.0 # L2 pixel loss.
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
@@ -176,7 +178,7 @@ def fit_smpl(gctx,
         if fit_mode=='tex_mlp':
             vtx_col_opt = model(xy_coords)
             vtx_col_opt = vtx_col_opt.reshape(1,mat_shape_1, mat_shape_2,3)
-        cv2.imwrite(f'{out_dir}/final_tex.png',vtx_col_opt.cpu().detach().numpy()[0]*255)
+        cv2.imwrite(f'{out_dir}/final_tex.png',vtx_col_opt.cpu().detach().numpy()[0,:,:,::-1]*255)
         color_opt = texture_render(gctx,
                                         mvp_list[0],
                                         smpl_mesh_target.v_pos,

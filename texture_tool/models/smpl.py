@@ -3,11 +3,11 @@
 
 import chumpy as ch
 import numpy as np
-import cPickle as pkl
+import _pickle as pkl
 import scipy.sparse as sp
 from chumpy.ch import Ch
-from vendor.smpl.posemapper import posemap, Rodrigues
-from vendor.smpl.serialization import backwards_compatibility_replacements
+from .vendor.smpl.posemapper import posemap, Rodrigues
+from .vendor.smpl.serialization import backwards_compatibility_replacements
 
 
 VERT_NOSE = 331
@@ -39,7 +39,7 @@ class Smpl(Ch):
 
         if 'model' in which:
             if not isinstance(self.model, dict):
-                dd = pkl.load(open(self.model))
+                dd = pkl.load(open(self.model, 'rb'),encoding='latin1')
             else:
                 dd = self.model
 
@@ -171,9 +171,9 @@ def model_params_in_camera_coords(trans, pose, J0, camera_t, camera_rt):
 
 
 if __name__ == '__main__':
-    smpl = Smpl(model='../vendor/smpl/models/basicModel_f_lbs_10_207_0_v1.0.0.pkl')
-    smpl.pose[:] = np.random.randn(72) * .2
-    smpl.pose[0] = np.pi
+    smpl = Smpl(model='../smpl/models/basicmodel_m_lbs_10_207_0_v1.0.0.pkl')
+    # smpl.pose[:] = np.random.randn(72) * .2
+    # smpl.pose[0] = np.pi
     # smpl.v_personal[:] = np.random.randn(*smpl.shape) / 500.
 
     # render test
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     # Show it using OpenCV
     import cv2
 
-    cv2.imshow('render_SMPL', rn.r)
-    print ('..Print any key while on the display window')
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    cv2.imwrite('render_SMPL.png', rn.r)
+    # print ('..Print any key while on the display window')
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()

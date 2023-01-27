@@ -19,6 +19,23 @@ def projection(x=0.1, n=1.0, f=50.0):
                      [  0,    0, -(f+n)/(f-n), -(2*f*n)/(f-n)],
                      [  0,    0,           -1,              0]]).astype(np.float32)
 
+def projection_asp(r=1.0, t=1.0, n=1.0, f=50.0):
+    return np.array([[1.0/r,    0,           0,                0],
+                     [  0,    1.0/t,            0,               0],
+                     [  0,      0,     -2.0/(f-n),    -(f+n)/(f-n)],
+                     [  0,      0,            0,              1]]).astype(np.float32)
+
+def projection_intrinsic(intrinsic,n=0.1,f=1000.0):
+    f_x = intrinsic[0,0]
+    f_y = intrinsic[1,1]
+    W_2 = intrinsic[0,2]
+    H_2 = intrinsic[1,2]
+    return np.array([[f_x/W_2,    0,              0,              0],
+                     [  0,    f_y/H_2,            0,              0],
+                     [  0,      0,     -(f+n)/(f-n), -(2*f*n)/(f-n)],
+                     [  0,      0,               -1,              0]]).astype(np.float32)
+
+
 def translate(x, y, z):
     return np.array([[1, 0, 0, x],
                      [0, 1, 0, y],
@@ -39,8 +56,18 @@ def rotate_y(a):
                      [-s, 0, c, 0],
                      [ 0, 0, 0, 1]]).astype(np.float32)
 
-def random_rotation_translation(t):
-    m = np.random.normal(size=[3, 3])
+def rotate_z(a):
+    s, c = np.sin(a), np.cos(a)
+    return np.array([[c, s, 0, 0],
+                     [-s, c, 0, 0],
+                     [0, 0, 1, 0],
+                     [0,  0, 0, 1]]).astype(np.float32)
+
+def random_rotation_translation(t,ma=None):
+    if ma is None:
+        m = np.random.normal(size=[3, 3])
+    else:
+        m=ma
     m[1] = np.cross(m[0], m[2])
     m[2] = np.cross(m[0], m[1])
     m = m / np.linalg.norm(m, axis=1, keepdims=True)
@@ -55,7 +82,7 @@ def random_rotation_translation(t):
 
 def bilinear_downsample(x):
     w = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype=torch.float32, device=x.device) / 64.0
-    w = w.expand(x.shape[-1], 1, 4, 4) 
+    w = w.expand(x.shape[-1], 1, 4, 4)
     x = torch.nn.functional.conv2d(x.permute(0, 3, 1, 2), w, padding=1, stride=2, groups=x.shape[-1])
     return x.permute(0, 2, 3, 1)
 
