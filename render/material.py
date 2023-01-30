@@ -177,6 +177,6 @@ def merge_materials(materials, texcoords, tfaces, mfaces):
                 new_tverts_data.append([(matIdx + texcoords[ti][0]) / s_coeff[1], texcoords[ti][1] / s_coeff[0]]) # Offset texture coodrinate (x direction) by material id & scale to local space. Note, texcoords are (u,v) but texture is stored (w,h) so the indexes swap here
                 new_tverts[ti][matIdx] = len(new_tverts_data) - 1
             tfaces[fi][vi] = new_tverts[ti][matIdx] # reindex vertex
-
+    breakpoint()
     return uber_material, new_tverts_data, tfaces
 

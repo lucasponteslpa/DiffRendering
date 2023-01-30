@@ -184,8 +184,9 @@ def main():
 
     smpl = Smpl(model='texture_tool/smpl/models/basicmodel_m_lbs_10_207_0_v1.0.0.pkl')
 
-    smpl_f_mesh = load_obj('texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.obj',
-                            mtl_override='texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.mtl')
+    # smpl_f_mesh = load_obj('texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.obj',
+    #                         mtl_override='texture_tool/smpl_model/smpl_sample/SMPL/SMPL_female_default_resolution.mtl')
+    smpl_f_mesh = load_obj('NeuralActor_dataset/lan/uvmapping.obj', mtl_override='NeuralActor_dataset/lan/lan.mtl')
     glctx = dr.RasterizeCudaContext()
 
     smpl_vert, smpl_model, device = gen_smpl_vertices(gpu_id=[1])
@@ -297,6 +298,7 @@ def main():
                   args.resolution,
                   verts=v_smpl)
 
+    breakpoint()
     cv2.imwrite('frame_smpl.png', np.clip(np.rint(f_smpl[0].cpu().detach().numpy()*255),0,255).astype(np.uint8)[:,:,::-1])
     gen_smpl_rand_1_cam_mp4_rbetas(glctx,writer, smpl_f_mesh, smpl_model, poses, trans, mtx_list, args.resolution)
 

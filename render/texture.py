@@ -1,10 +1,10 @@
-# Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved. 
+# Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
 # property and proprietary rights in and to this material, related
-# documentation and any modifications thereto. Any use, reproduction, 
-# disclosure or distribution of this material and related documentation 
-# without an express license agreement from NVIDIA CORPORATION or 
+# documentation and any modifications thereto. Any use, reproduction,
+# disclosure or distribution of this material and related documentation
+# without an express license agreement from NVIDIA CORPORATION or
 # its affiliates is strictly prohibited.
 
 import os
@@ -25,14 +25,14 @@ class texture2d_mip(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dout):
-        gy, gx = torch.meshgrid(torch.linspace(0.0 + 0.25 / dout.shape[1], 1.0 - 0.25 / dout.shape[1], dout.shape[1]*2, device="cuda"), 
+        gy, gx = torch.meshgrid(torch.linspace(0.0 + 0.25 / dout.shape[1], 1.0 - 0.25 / dout.shape[1], dout.shape[1]*2, device="cuda"),
                                 torch.linspace(0.0 + 0.25 / dout.shape[2], 1.0 - 0.25 / dout.shape[2], dout.shape[2]*2, device="cuda"),
                                 indexing='ij')
         uv = torch.stack((gx, gy), dim=-1)
         return dr.texture(dout * 0.25, uv[None, ...].contiguous(), filter_mode='linear', boundary_mode='clamp')
 
 ########################################################################################################
-# Simple texture class. A texture can be either 
+# Simple texture class. A texture can be either
 # - A 3D tensor (using auto mipmaps)
 # - A list of 3D tensors (full custom mip hierarchy)
 ########################################################################################################
@@ -101,7 +101,7 @@ class Texture2D(torch.nn.Module):
                 mip = util.safe_normalize(mip)
 
 ########################################################################################################
-# Helper function to create a trainable texture from a regular texture. The trainable weights are 
+# Helper function to create a trainable texture from a regular texture. The trainable weights are
 # initialized with texture data as an initial guess
 ########################################################################################################
 

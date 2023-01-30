@@ -52,7 +52,6 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
                 all_materials += material.load_mtl(os.path.join(obj_path, line.split()[1]), clear_ks) # Read in entire material library
     else:
         all_materials += material.load_mtl(mtl_override)
-
     # load vertices
     vertices, texcoords, normals  = [], [], []
     for line in lines:
@@ -103,6 +102,7 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
                 tfaces.append([t0, t1, t2])
                 nfaces.append([n0, n1, n2])
     assert len(tfaces) == len(faces) and len(nfaces) == len (faces)
+    breakpoint()
 
     # Create an "uber" material by combining all textures into a larger texture
     if len(used_materials) > 1:
@@ -112,7 +112,6 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
             uber_material = used_materials[0]
         except:
             uber_material = None
-
     vertices = torch.tensor(vertices, dtype=torch.float32, device='cuda')
     texcoords = torch.tensor(texcoords, dtype=torch.float32, device='cuda') if len(texcoords) > 0 else None
     normals = torch.tensor(normals, dtype=torch.float32, device='cuda') if len(normals) > 0 else None
