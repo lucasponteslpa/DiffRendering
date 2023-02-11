@@ -69,14 +69,14 @@ def fit_smpl(gctx,
         canonical_v_pos = torch.clone(smpl_mesh_target.v_pos).to('cuda')
     elif fit_mode == 'tex_mlp' or fit_mode == 'tex_mlp2':
         mat_shape = smpl_mesh_target.material['kd'].data.shape
-        mat_shape_1 = mat_shape[1]//4
-        mat_shape_2 = mat_shape[2]//4
+        mat_shape_1 = mat_shape[1]//8
+        mat_shape_2 = mat_shape[2]//8
         coords = torch.linspace(-1.0,1.0,mat_shape_1,dtype=torch.float32, device='cuda')
         x_grid, y_grid = torch.meshgrid(coords, coords, indexing='ij')
         x_coords = x_grid.reshape(-1).unsqueeze(-1)
         y_coords = y_grid.reshape(-1).unsqueeze(-1)
         xy_coords = torch.cat((x_coords,y_coords), -1)
-        model = SimpleColorMLP(pos_enc_len=6, in_channels=2, n_mlp_layers=3).to('cuda')
+        model = SimpleColorMLP(pos_enc_len=6, in_channels=2, n_mlp_layers=8).to('cuda')
 
     else:
         vtx_col_rand = np.random.uniform(0.0, 1.0, size=smpl_mesh_target.v_pos.shape)
@@ -90,7 +90,7 @@ def fit_smpl(gctx,
         optimizer    = torch.optim.Adam(model.parameters(), lr=1e-2)
     scheduler    = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: max(0.01, 10**(-x*0.0005)))
     ssim = SSIM(data_range=1.0)
-    with tqdm(total=poses.shape[0]*len(mvp_list)) as tq:
+    with tqdm(total=poses.shape[0]*len(mvp_list)-1) as tq:
         for it in range(max_iter):
             print("Epoch {}/{}".format(it+1, max_iter))
             save_mp4 = mp4save_interval and (it % mp4save_interval == 0)
@@ -210,9 +210,9 @@ def main():
     parser.add_argument('--discontinuous', action='store_true', default=False)
     parser.add_argument('--resolution', type=int, default=32, required=False)
     parser.add_argument('--mp4save', action='store_true', default=False)
-    parser.add_argument('--n_rand_poses', type=int, default=5, required=False)
-    parser.add_argument('--n_interp_pose_size', type=int, default=100, required=False)
-    parser.add_argument('--n_camera_poses', type=int, default=10, required=False)
+    parser.add_argument('--n_rand_poses', type=int, default=2, required=False)
+    parser.add_argument('--n_interp_pose_size', type=int, default=2, required=False)
+    parser.add_argument('--n_camera_poses', type=int, default=100, required=False)
     parser.add_argument('--display-interval', type=int, default=0)
     parser.add_argument('--mp4save-interval', type=int, default=100)
     parser.add_argument('--max-iter', type=int, default=5)
@@ -255,7 +255,7 @@ def main():
         log_fn='log.txt',
         mp4save_interval=args.mp4save_interval,
         mp4save_fn='progress.mp4',
-        fit_mode='tex'
+        fit_mode='tex_mlp'
     )
     print("Done.")
 

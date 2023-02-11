@@ -102,7 +102,7 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
                 tfaces.append([t0, t1, t2])
                 nfaces.append([n0, n1, n2])
     assert len(tfaces) == len(faces) and len(nfaces) == len (faces)
-    breakpoint()
+
 
     # Create an "uber" material by combining all textures into a larger texture
     if len(used_materials) > 1:

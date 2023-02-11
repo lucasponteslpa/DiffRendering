@@ -122,10 +122,10 @@ def gen_smpl_vertices(model_path='texture_tool/smpl/models/basicmodel_m_lbs_10_2
     result = model(betas, pose, trans)
     return result.float(), model, device
 
-def gen_smpl_rand_1_cam_mp4(ctx, writer, mesh, smpl_model, poses, betas, trans, mtx, resolution):
+def gen_smpl_rand_1_cam_mp4(ctx, writer, mesh, smpl_model, poses, betas, trans, mtx, resolution, n_cam=4):
     for p, b, t in zip(poses,betas, trans):
         img_frames = []
-        for m in mtx:
+        for m in mtx[:n_cam] if n_cam < len(mtx) else mtx:
             f = gen_img_frame(ctx,mesh, smpl_model, p, b, t, m,resolution)
             f = np.clip(np.rint(f[0].cpu().detach().numpy()*255),0,255).astype(np.uint8)
             img_frames.append(f)
@@ -281,7 +281,7 @@ def main():
         mv = np.matmul(m,I)
         # mv  = np.matmul(util.translate(0, 0, -1.5), mv)
         mvp = np.matmul(proj, mv).astype(np.float32)
-        mtx_list.append(mvp)
+        mtx_list.append(torch.from_numpy(mvp).to(device))
 
     smpl.pose = poses[0].cpu().detach().numpy()
     smpl._set_up()
