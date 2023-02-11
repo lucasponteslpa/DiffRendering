@@ -55,7 +55,7 @@ def generate_video(gctx, writer, dataset, model, smpl_model,smpl_mesh,tex_shape,
                             resolution,
                             mip=mips[1:])
             f = np.clip(frame_dict['target_frame'].cpu().detach().numpy()*255,0,255).astype(np.uint8)
-            img_frames.append(f)
+            img_frames.append(cv2.resize(f, dsize=(resolution,resolution), interpolation=cv2.INTER_CUBIC))
             f = np.clip(f_inf[0].cpu().detach().numpy()*255,0,255).astype(np.uint8)
             img_frames.append(f)
 
